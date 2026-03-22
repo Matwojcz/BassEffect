@@ -19,88 +19,86 @@ static int paBassOverdriveCallback( const void *inputBuffer, void *outputBuffer,
     return 0;
 }
 
+void checkPaErrors(const PaError errorHandling)
+{
+
+    if (errorHandling != paNoError)
+    {
+        throw std::runtime_error(std::string("PortAudio error: \n") + Pa_GetErrorText(errorHandling));
+    }
+}
 
 int main()
 {
-    PaError err = Pa_Initialize();
-    if(err != paNoError)
+
+    try
     {
-        printf(  "PortAudio error: %s\n", Pa_GetErrorText( err ) );
+        // Initializes portAudio
+        checkPaErrors(Pa_Initialize());
+
+
+        const int numDevices = Pa_GetDeviceCount();
+        if( numDevices < 0 )
+        {
+            checkPaErrors(numDevices);
+        }
+
+        for(unsigned int i=0; i<numDevices; i++ )
+        {
+            const PaDeviceInfo* deviceInfo = Pa_GetDeviceInfo(i);
+            std::cout << "Index " << i << " " <<  deviceInfo->name << std::endl;
+            std::cout << deviceInfo->defaultSampleRate << std::endl;
+
+        }
+
+        // Parameters needed for the correct device to be used
+        PaStreamParameters outputParameters;
+        PaStreamParameters inputParameters;
+        constexpr int ioDeviceIndex = 2;
+        // input parameters
+        inputParameters.device = 2;
+        inputParameters.channelCount = 1;
+        inputParameters.sampleFormat = paFloat32;
+        inputParameters.suggestedLatency = Pa_GetDeviceInfo(ioDeviceIndex)->defaultLowInputLatency;
+        inputParameters.hostApiSpecificStreamInfo = nullptr;
+        // output parameters
+        outputParameters.device = 2;
+        outputParameters.channelCount = 1;
+        outputParameters.sampleFormat = paFloat32;
+        outputParameters.suggestedLatency = Pa_GetDeviceInfo(ioDeviceIndex)->defaultLowOutputLatency;
+        outputParameters.hostApiSpecificStreamInfo = nullptr;
+
+        PaStream *stream;
+        /* Open an audio I/O stream. */
+        checkPaErrors(Pa_OpenStream(&stream,
+                             &inputParameters,
+                             &outputParameters,
+                             SAMPLE_RATE,
+                             64,
+                             paNoFlag,
+                             paBassOverdriveCallback,
+                             nullptr)
+     );
+
+        /* Start Streaming*/
+        checkPaErrors(Pa_StartStream( stream ));
+        /* Sleep and keep stream alive until enter clicked */
+        std::cout << "Press Enter to stop.." << std::endl;
+        std::cin.get();
+        /* Stop Streaming*/
+        checkPaErrors(Pa_StopStream( stream ));
+        /* Close Stream*/
+        checkPaErrors(Pa_CloseStream( stream ));
+        /* Terminating PortAudio*/
+        checkPaErrors(Pa_Terminate());
+    }
+    catch (const std::exception &e)
+    {
+        std::cout << e.what() << std::endl;
         return -1;
     }
 
-    int numDevices = Pa_GetDeviceCount();
-    if( numDevices < 0 )
-    {
-        printf( "ERROR: Pa_CountDevices returned 0x%x\n", numDevices );
-        err = numDevices;
-        return -1;
-    }
-
-    for(unsigned int i=0; i<numDevices; i++ )
-    {
-        const PaDeviceInfo* deviceInfo = Pa_GetDeviceInfo(i);
-        std::cout << "Index " << i << " " <<  deviceInfo->name << std::endl;
-        std::cout << deviceInfo->defaultSampleRate << std::endl;
-
-    }
-
-    PaStream *stream;
-
-    /* Open an audio I/O stream. */
-    err = Pa_OpenDefaultStream( &stream,
-                                1,          /* no input channels */
-                                1,          /* mono output */
-                                paFloat32,  /* 32 bit floating point output */
-                                SAMPLE_RATE,
-                                256,        /* frames per buffer, i.e. the number
-                                                   of sample frames that PortAudio will
-                                                   request from the callback. Many apps
-                                                   may want to use
-                                                   paFramesPerBufferUnspecified, which
-                                                   tells PortAudio to pick the best,
-                                                   possibly changing, buffer size.*/
-                                paBassOverdriveCallback, /* this is your callback function */
-                                nullptr ); /*This is a pointer that will be passed to
-                                                   your callback*/
-    if(err != paNoError)
-    {
-        printf(  "PortAudio error: %s\n", Pa_GetErrorText( err ) );
-        return -1;
-    }
-
-    /* Start Streaming*/
-    err = Pa_StartStream( stream );
-    if( err != paNoError )
-    {
-        printf(  "PortAudio error: %s\n", Pa_GetErrorText( err ) );
-        return -1;
-    }
-
-    /* Sleep and keep stream alive until enter clicked */
-    std::cout << "Press Enter to stop.." << std::endl;
-    std::cin.get();
-
-    /* Start Streaming*/
-    err = Pa_StopStream( stream );
-    if( err != paNoError )
-    {
-        printf(  "PortAudio error: %s\n", Pa_GetErrorText( err ) );
-        return -1;
-    }
-
-    err = Pa_CloseStream( stream );
-    if( err != paNoError )
-    {
-        printf(  "PortAudio error: %s\n", Pa_GetErrorText( err ) );
-        return -1;
-    }
-
-
-    err = Pa_Terminate();
-    if( err != paNoError )
-        printf(  "PortAudio error: %s\n", Pa_GetErrorText( err ) );
-
+    return 0;
 }
 
 
