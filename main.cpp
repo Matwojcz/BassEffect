@@ -10,10 +10,18 @@ static int paBassOverdriveCallback( const void *inputBuffer, void *outputBuffer,
 {
     auto* outB = static_cast<float*>(outputBuffer);
     auto* inB = static_cast<const float*>(inputBuffer);
-
+    float gain = 40.0;
     for (unsigned int i = 0; i < framesPerBuffer; i++ )
     {
-        *outB++ = *inB++;
+
+        // drive multiplications
+        float drive = *inB++ * gain;
+        //Waveshaping formula y = x / 1 + abs(x)
+        float waveshaping = drive / (1 + abs(drive));
+        // normalizing signal so the volume isn't raised by raising gain
+        *outB++ = waveshaping * (1.0/gain);
+
+        // *outB++ = *inB++;
     }
 
     return 0;
@@ -43,29 +51,41 @@ int main()
             checkPaErrors(numDevices);
         }
 
+        int inputDeviceIndex = Pa_GetDefaultInputDevice();
+        int outputDeviceIndex = Pa_GetDefaultOutputDevice();
         for(unsigned int i=0; i<numDevices; i++ )
         {
             const PaDeviceInfo* deviceInfo = Pa_GetDeviceInfo(i);
             std::cout << "Index " << i << " " <<  deviceInfo->name << std::endl;
             std::cout << deviceInfo->defaultSampleRate << std::endl;
 
+            const std::string nameFound(deviceInfo->name);
+            if (nameFound.find("Scarlett") != std::string::npos)
+            {
+                std::cout << "Index of Scarlett is = " << i << std::endl;
+                inputDeviceIndex = i;
+                outputDeviceIndex = i;
+            }
+
         }
 
         // Parameters needed for the correct device to be used
         PaStreamParameters outputParameters;
         PaStreamParameters inputParameters;
-        constexpr int ioDeviceIndex = 2;
+
+
+
         // input parameters
-        inputParameters.device = 2;
+        inputParameters.device = inputDeviceIndex;
         inputParameters.channelCount = 1;
         inputParameters.sampleFormat = paFloat32;
-        inputParameters.suggestedLatency = Pa_GetDeviceInfo(ioDeviceIndex)->defaultLowInputLatency;
+        inputParameters.suggestedLatency = Pa_GetDeviceInfo(inputDeviceIndex)->defaultLowInputLatency;
         inputParameters.hostApiSpecificStreamInfo = nullptr;
         // output parameters
-        outputParameters.device = 2;
+        outputParameters.device = outputDeviceIndex;
         outputParameters.channelCount = 1;
         outputParameters.sampleFormat = paFloat32;
-        outputParameters.suggestedLatency = Pa_GetDeviceInfo(ioDeviceIndex)->defaultLowOutputLatency;
+        outputParameters.suggestedLatency = Pa_GetDeviceInfo(outputDeviceIndex)->defaultLowOutputLatency;
         outputParameters.hostApiSpecificStreamInfo = nullptr;
 
         PaStream *stream;
