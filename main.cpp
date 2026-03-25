@@ -1,21 +1,57 @@
 #include <iostream>
 #include <portaudio.h>
+#include <numbers>
 #define SAMPLE_RATE (48000)
+
+
+class ToneTester
+{
+public:
+    float phase;
+    float bassPhaser(const int sampleRate, float frequency)
+    {
+        phase +=  2.0f * std::numbers::pi * frequency / sampleRate;
+        if (phase  >= 2.0f * std::numbers::pi) phase -= 2.0f * std::numbers::pi;
+        return sin(phase);
+    };
+};
+
 
 
 struct CompressorState // change to class Compressor and refactor
 {
+public:
+    // float drive = *inB++ * state->gain;
+
     float gain = 2.0f;
     float rms = 0.0f;
 };
-CompressorState compState;
-
 
 class Overdrive
 {
+public:
+    float gain = 40.0f;
+    float waveshaping(float inputBuffer)
+    {
+
+        // float drive = *inB++ * state->gain;
+        //Waveshaping formula y = x / 1 + abs(x)
+        // float waveshaping = drive / (1 + abs(drive));
+        //Waveshaping with tanh
+        // float waveshaping = tanh(drive);
+        // normalizing signal so the volume isn't raised by raising gain
+        // *outB++ = waveshaping * (1.0f/state->gain);
+
+
+        float drive = inputBuffer * gain;
+        return tanh(drive) * (1.0f/gain);
+
+    }
 
 };
-
+ToneTester toneTester;
+Overdrive overdrive;
+CompressorState compState;
 
 static int paBassOverdriveCallback( const void *inputBuffer, void *outputBuffer,
                            unsigned long framesPerBuffer,
@@ -30,16 +66,9 @@ static int paBassOverdriveCallback( const void *inputBuffer, void *outputBuffer,
     for (unsigned int i = 0; i < framesPerBuffer; i++ )
     {
 
-        // drive multiplications
-        float drive = *inB++ * state->gain;
-        //Waveshaping formula y = x / 1 + abs(x)
-        // float waveshaping = drive / (1 + abs(drive));
-        //Waveshaping with tanh
-        float waveshaping = tanh(drive);
 
-
-        // normalizing signal so the volume isn't raised by raising gain
-        *outB++ = waveshaping * (1.0f/state->gain);
+        // *outB++ = overdrive.waveshaping(*inB++);
+        *outB++ = overdrive.waveshaping(toneTester.bassPhaser(SAMPLE_RATE, 80.0f));
 
         // *outB++ = *inB++;
     }
