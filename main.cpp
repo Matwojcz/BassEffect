@@ -2,24 +2,44 @@
 #include <portaudio.h>
 #define SAMPLE_RATE (48000)
 
+
+struct CompressorState // change to class Compressor and refactor
+{
+    float gain = 2.0f;
+    float rms = 0.0f;
+};
+CompressorState compState;
+
+
+class Overdrive
+{
+
+};
+
+
 static int paBassOverdriveCallback( const void *inputBuffer, void *outputBuffer,
                            unsigned long framesPerBuffer,
                            const PaStreamCallbackTimeInfo* timeInfo,
                            PaStreamCallbackFlags statusFlags,
                            void *userData )
 {
+    CompressorState *state = static_cast<CompressorState*>(userData);
+
     auto* outB = static_cast<float*>(outputBuffer);
     auto* inB = static_cast<const float*>(inputBuffer);
-    float gain = 40.0;
     for (unsigned int i = 0; i < framesPerBuffer; i++ )
     {
 
         // drive multiplications
-        float drive = *inB++ * gain;
+        float drive = *inB++ * state->gain;
         //Waveshaping formula y = x / 1 + abs(x)
-        float waveshaping = drive / (1 + abs(drive));
+        // float waveshaping = drive / (1 + abs(drive));
+        //Waveshaping with tanh
+        float waveshaping = tanh(drive);
+
+
         // normalizing signal so the volume isn't raised by raising gain
-        *outB++ = waveshaping * (1.0/gain);
+        *outB++ = waveshaping * (1.0f/state->gain);
 
         // *outB++ = *inB++;
     }
@@ -97,7 +117,7 @@ int main()
                              64,
                              paNoFlag,
                              paBassOverdriveCallback,
-                             nullptr)
+                             &compState)
      );
 
         /* Start Streaming*/
