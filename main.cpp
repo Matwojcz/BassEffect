@@ -15,31 +15,6 @@ public:
     };
 };
 
-class Compressor // change to class Compressor and refactor
-{
-public:
-    float gain = 1.0f;
-    float rms = 0.0f;
-    float tav = 0.1f;
-    float xrms = 0.0f;
-    float compThreshold = 0.3f;
-
-    float compression(float sample)
-    {
-        xrms = (1 - tav) * xrms  + tav * (sample * sample);
-        if (xrms < compThreshold)
-        {
-            gain = 1.0f;
-        }
-        else
-        {
-            gain = compThreshold / xrms;
-            std::cout << "Compressing, rms " << xrms << " gain: "<< gain << std::endl;
-        }
-        return sample * gain;
-    }
-};
-
 class Overdrive
 {
 public:
@@ -51,6 +26,40 @@ public:
         return tanh(drive);
     }
 
+
+};
+
+class Compressor
+{
+public:
+    float gain = 1.0f;
+    float rms = 0.0f;
+    float tav = 0.1f;
+    float xrms = 0.0f;
+    float compThreshold = 0.3f;
+    float attack{0.01f};
+    float release{0.001f};
+    float targetGain{0.0f};
+    //gain = (1 - 0.01)* 1 + (0).01 * 1)
+    //gain = 0.99 + 0.01
+    float compression(float sample)
+    {
+        xrms = (1 - tav) * xrms  + tav * (sample * sample);
+        if (xrms < compThreshold)
+        {
+            // gain = 1.0f;
+            targetGain = 1.0f;
+            gain = (1 - release) * gain + release * targetGain;
+        }
+
+        else
+        {
+            targetGain = compThreshold / xrms;
+            gain = (1 - attack) * gain + attack * targetGain;
+            std::cout << "Compressing, rms " << xrms << " gain: "<< gain << std::endl;
+        }
+        return sample * gain;
+    }
 };
 ToneTester toneTester;
 Overdrive overdrive;
