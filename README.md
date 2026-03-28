@@ -18,7 +18,7 @@ A standalone cross-platform application that processes audio from any connected 
 
 - [x] Passthrough
 - [x] Overdrive (tanh waveshaping)
-- [ ] Compressor (RMS level detection, attack/release envelope)
+- [x] Compressor (RMS level detection, attack/release envelope)
 - [ ] Wah-wah (time-varying filter)
 - [ ] UI with Qt
 
