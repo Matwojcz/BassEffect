@@ -2,10 +2,27 @@
 #include <portaudio.h>
 #include <numbers>
 #include <atomic>
+#include <termios.h>
+#include <unistd.h>
 #define SAMPLE_RATE (48000)
 
-std::atomic<bool> overdriveEnabled{true};
-std::atomic<bool> compressorEnabled{true};
+// ---  global flags for enabling effects --- /
+std::atomic<bool> overdriveEnabled{false};
+std::atomic<bool> compressorEnabled{false};
+
+/* Old unix code to set mac terminal to react to keypresses without waiting for enter  */
+void setRawMode(bool enable) {
+    static struct termios oldSettings;
+    if (enable) {
+        tcgetattr(STDIN_FILENO, &oldSettings);
+        struct termios newSettings = oldSettings;
+        newSettings.c_lflag &= ~(ICANON | ECHO);
+        tcsetattr(STDIN_FILENO, TCSANOW, &newSettings);
+    } else {
+        tcsetattr(STDIN_FILENO, TCSANOW, &oldSettings);
+    }
+}
+
 
 class ToneTester
 {
@@ -26,8 +43,7 @@ public:
     float waveshaping(float inputBuffer)
     {
         float drive = inputBuffer * gain;
-        return tanh(drive) * (1.0f/gain);
-        // return tanh(drive);
+        return tanh(drive);
     }
 
 
@@ -60,7 +76,7 @@ public:
         {
             targetGain = compThreshold / xrms;
             gain = (1 - attack) * gain + attack * targetGain;
-            std::cout << "Compressing, rms " << xrms << " gain: "<< gain << std::endl;
+            // std::cout << "Compressing, rms " << xrms << " gain: "<< gain << std::endl;
         }
         return sample * gain;
     }
@@ -83,33 +99,17 @@ static int paBassOverdriveCallback( const void *inputBuffer, void *outputBuffer,
         float phaser = toneTester.bassPhaser(SAMPLE_RATE, 80.0f);
         float sample = phaser;
 
-        if (overdriveEnabled == false && compressorEnabled == false)
-            sample = phaser;
-
-
         if (overdriveEnabled)
         {
-
             sample = overdrive.waveshaping(sample);
         }
 
         if (compressorEnabled)
         {
-
             sample = compressor.compression(sample);
-
         }
 
-
         *outB++ = sample;
-
-
-
-
-
-
-
-        // *outB++ = *inB++;
     }
 
     return 0;
@@ -192,9 +192,43 @@ int main()
 
         /* Start Streaming*/
         checkPaErrors(Pa_StartStream( stream ));
-        /* Sleep and keep stream alive until enter clicked */
-        std::cout << "Press Enter to stop.." << std::endl;
-        std::cin.get();
+
+
+        // ---- loop for enabling effects ------ //
+        bool exitFlag = true;
+        std::cout << "Press 'o' for Overdrive..." << std::endl;
+        std::cout << "Press 'c' for Compressor..." << std::endl;
+        std::cout << "Press 'q' to quit..." << std::endl;
+
+        setRawMode(true);
+
+        while (exitFlag)
+        {
+            char keyPress = std::cin.get();
+
+            if (keyPress == 'q')
+            {
+                exitFlag = false;
+            }
+
+            // -- keypress for overdrive -- //
+            if (keyPress == 'o')
+            {
+               overdriveEnabled =! overdriveEnabled;
+                if (overdriveEnabled == true) std::cout << "Overdrive is on" << std::endl;
+                else std::cout << "Overdrive is off" << std::endl;
+            }
+
+            // -- keypress for compressor -- //
+            if (keyPress == 'c')
+            {
+              compressorEnabled =! compressorEnabled;
+                if (compressorEnabled == true) std::cout << "Compressor is on" << std::endl;
+                else std::cout << "Compressor is off" << std::endl;
+            }
+        }
+        setRawMode(false);
+
         /* Stop Streaming*/
         checkPaErrors(Pa_StopStream( stream ));
         /* Close Stream*/
@@ -207,12 +241,6 @@ int main()
         std::cout << e.what() << std::endl;
         return -1;
     }
-
-
-    // ------- Logic for toggling specific elements -------- //
-
-
-
     return 0;
 }
 
