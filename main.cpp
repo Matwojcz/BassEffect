@@ -1,7 +1,11 @@
 #include <iostream>
 #include <portaudio.h>
 #include <numbers>
+#include <atomic>
 #define SAMPLE_RATE (48000)
+
+std::atomic<bool> overdriveEnabled{true};
+std::atomic<bool> compressorEnabled{true};
 
 class ToneTester
 {
@@ -22,8 +26,8 @@ public:
     float waveshaping(float inputBuffer)
     {
         float drive = inputBuffer * gain;
-        // return tanh(drive) * (1.0f/gain);
-        return tanh(drive);
+        return tanh(drive) * (1.0f/gain);
+        // return tanh(drive);
     }
 
 
@@ -72,17 +76,38 @@ static int paBassOverdriveCallback( const void *inputBuffer, void *outputBuffer,
                            void *userData )
 {
     Compressor *state = static_cast<Compressor*>(userData);
-
     auto* outB = static_cast<float*>(outputBuffer);
     auto* inB = static_cast<const float*>(inputBuffer);
     for (unsigned int i = 0; i < framesPerBuffer; i++ )
     {
-        float phaser;
-        std::cout << compressor.xrms << std::endl;
-        // *outB++ = overdrive.waveshaping(*inB++);
-        // *outB++ = overdrive.waveshaping(toneTester.bassPhaser(SAMPLE_RATE, 80.0f));
-        phaser = overdrive.waveshaping(toneTester.bassPhaser(SAMPLE_RATE, 80.0f));
-        *outB++ = state->compression(phaser);
+        float phaser = toneTester.bassPhaser(SAMPLE_RATE, 80.0f);
+        float sample = phaser;
+
+        if (overdriveEnabled == false && compressorEnabled == false)
+            sample = phaser;
+
+
+        if (overdriveEnabled)
+        {
+
+            sample = overdrive.waveshaping(sample);
+        }
+
+        if (compressorEnabled)
+        {
+
+            sample = compressor.compression(sample);
+
+        }
+
+
+        *outB++ = sample;
+
+
+
+
+
+
 
         // *outB++ = *inB++;
     }
@@ -104,6 +129,8 @@ int main()
 
     try
     {
+
+
         // Initializes portAudio
         checkPaErrors(Pa_Initialize());
 
@@ -180,6 +207,11 @@ int main()
         std::cout << e.what() << std::endl;
         return -1;
     }
+
+
+    // ------- Logic for toggling specific elements -------- //
+
+
 
     return 0;
 }
