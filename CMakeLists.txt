@@ -3,7 +3,15 @@ project(bassOGverdrive)
 
 set(CMAKE_CXX_STANDARD 20)
 
-add_executable(bassOGverdrive main.cpp)
+add_executable(bassOGverdrive main.cpp
+        Compressor.cpp
+        Compressor.h
+        Overdrive.cpp
+        Overdrive.h
+        ToneTester.cpp
+        ToneTester.h
+        UserInterface.cpp
+        UserInterface.h)
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(PORTAUDIO REQUIRED portaudio-2.0)
 
