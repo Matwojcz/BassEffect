@@ -9,8 +9,8 @@
 class ToneTester
 {
 public:
-    float phase;
-    float bassPhaser(const int sampleRate, float frequency);
+    float phase = 0.0f;
+    float bassPhaser(int sampleRate, float frequency);
 };
 
 
