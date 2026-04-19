@@ -13,7 +13,9 @@ add_executable(bassOGverdrive main.cpp
         UserInterface.cpp
         UserInterface.h
         AudioEngine.cpp
-        AudioEngine.h)
+        AudioEngine.h
+        Reverb.cpp
+        Reverb.h)
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(PORTAUDIO REQUIRED portaudio-2.0)
 

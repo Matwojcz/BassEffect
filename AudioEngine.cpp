@@ -1,11 +1,7 @@
 //
 // Created by Mateusz Wojczynski on 02/04/2026.
 //
-
 #include "AudioEngine.h"
-
-
-
 
 void AudioEngine::checkPaErrors(const PaError errorHandling)
 {
@@ -22,7 +18,6 @@ int AudioEngine::EffectCallBack( const void *inputBuffer, void *outputBuffer,
                            PaStreamCallbackFlags statusFlags,
                            void *userData )
 {
-    // Compressor *state = static_cast<Compressor*>(userData);
     auto *engine = static_cast<AudioEngine*>(userData);
     auto* outB = static_cast<float*>(outputBuffer);
     for (unsigned int i = 0; i < framesPerBuffer; i++ )
@@ -39,8 +34,6 @@ int AudioEngine::EffectCallBack( const void *inputBuffer, void *outputBuffer,
         {
             sample = engine->compressor.compression(sample);
         }
-        // std::cout << "callback running, sample: " << sample << std::endl;
-        // *outB++ = sample;o
         *outB++ = sample;
     }
 
